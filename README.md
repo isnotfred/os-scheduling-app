@@ -152,11 +152,11 @@ Feel free to fork this project and submit pull requests for any improvements.
 
 ## License
 
-[Specify your license here]
+MIT License
 
 ## Author
 
-[Your name/organization]
+Frederick Orlain
 
 ## Version
 
