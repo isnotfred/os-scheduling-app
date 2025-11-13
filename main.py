@@ -16,10 +16,12 @@ class SchedulingTab(QWidget):
         self.scheduling_algo = scheduling_algo
         self.with_priority = with_priority
 
+        # Initialize sections
         self.tab_layout = QHBoxLayout()
         self.input_section = QVBoxLayout()
         self.output_section = QVBoxLayout()
         
+        # Layouts for input section
         form_layout = QHBoxLayout()
         input_layout = QVBoxLayout()
         buttons_layout = QHBoxLayout()
@@ -38,6 +40,7 @@ class SchedulingTab(QWidget):
             }
         """
 
+        # Initialize AT, BT, and Priority input fields
         if self.with_priority:
             self.at_input_field = QLineEdit()
             self.at_input_field.setPlaceholderText("Enter arrival time")
@@ -59,6 +62,7 @@ class SchedulingTab(QWidget):
             self.bt_input_field.setPlaceholderText("Enter burst time")
             self.bt_input_field.setStyleSheet(input_field_style)
 
+        # Initialize submit button for inputs
         submit_button = QPushButton("Add Process")
         if self.with_priority:
             submit_button.setFixedSize(90, self.at_input_field.sizeHint().height() * 3 + 15)
@@ -82,6 +86,7 @@ class SchedulingTab(QWidget):
             }
         """)
 
+        # Add input fields and submit button to form_layout
         input_layout.addWidget(self.at_input_field)
         input_layout.addWidget(self.bt_input_field)
         if self.with_priority:
@@ -110,6 +115,7 @@ class SchedulingTab(QWidget):
             }
         """
 
+        # Initialize table for processes
         if self.with_priority:
             self.input_table_widget = QTableWidget()
             self.input_table_widget.setEditTriggers(QTableWidget.NoEditTriggers)
@@ -127,6 +133,7 @@ class SchedulingTab(QWidget):
             self.input_table_widget.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
             self.input_table_widget.setStyleSheet(table_style)
         
+        # Initialize clear button to reset all input/output
         clear_input_button = QPushButton("Clear")
         clear_input_button.setFixedHeight(40)
         clear_input_button.clicked.connect(self.clear_all)
@@ -147,6 +154,7 @@ class SchedulingTab(QWidget):
             }
         """)
         
+        # Initialize schedule button to start CPU scheduling algorithm
         schedule_button = QPushButton("Schedule")
         schedule_button.setFixedHeight(40)
         schedule_button.clicked.connect(self.schedule_input)
@@ -167,13 +175,16 @@ class SchedulingTab(QWidget):
             }
         """)
 
+        # Add clear and schedule buttons to buttons_layout
         buttons_layout.addWidget(clear_input_button)
         buttons_layout.addWidget(schedule_button)
 
+        # Combine form_layout, input_table_widgets, and buttons_layout into one input_section layout
         self.input_section.addLayout(form_layout)
         self.input_section.addWidget(self.input_table_widget)
         self.input_section.addLayout(buttons_layout)
 
+        # Initialize labels for Gantt Chart (process id and time stamps)
         self.processes_label = QLabel()
         self.processes_label.setStyleSheet("""
             QLabel {
@@ -197,11 +208,13 @@ class SchedulingTab(QWidget):
             }
         """)
         
+        # Combine both labels into one widget
         gantt_chart_widget = QWidget()
         gantt_chart_layout = QVBoxLayout(gantt_chart_widget)
         gantt_chart_layout.addWidget(self.processes_label)
         gantt_chart_layout.addWidget(self.times_label)
 
+        # Turn the widget into a scrollable area
         scroll_area = QScrollArea()
         scroll_area.setFixedHeight(100)
         scroll_area.setWidget(gantt_chart_widget)       
@@ -216,6 +229,7 @@ class SchedulingTab(QWidget):
             }
         """)
 
+        # Initialize output table which will show all processed data of the processes
         self.output_table_widget = QTableWidget()
         self.output_table_widget.setFixedHeight(590)
         self.output_table_widget.setEditTriggers(QTableWidget.NoEditTriggers)
@@ -225,6 +239,7 @@ class SchedulingTab(QWidget):
         self.output_table_widget.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.output_table_widget.setStyleSheet(table_style)
 
+        # Initialize label for TAT, WT, and RT averages
         self.averages_label = QLabel()
         self.averages_label.setStyleSheet("""
             QLabel {
@@ -238,10 +253,12 @@ class SchedulingTab(QWidget):
             }
         """)
 
+        # Combine scroll_area, output_table_widget, and averages_label into one output_section layout
         self.output_section.addWidget(scroll_area)
         self.output_section.addWidget(self.output_table_widget)
         self.output_section.addWidget(self.averages_label)
 
+        # Combine both input section and output section into one layout and set it as the tab's layout
         self.tab_layout.addLayout(self.input_section, 4)
         self.tab_layout.addLayout(self.output_section, 8)
         self.setLayout(self.tab_layout)
@@ -250,8 +267,16 @@ class SchedulingTab(QWidget):
         try: 
             arrival_time = int(self.at_input_field.text().strip())
             burst_time = int(self.bt_input_field.text().strip())
+
+            # Error: arrival/burst time cannot be negative or zero
+            if arrival_time <= 0 or burst_time <= 0:
+                raise ValueError("Arrival/Burst time must be greater than 0")
+            
             if self.with_priority:
                 priority_level = int(self.priority_input_field.text().strip())
+                # Error: priority cannot be negative or zero
+                if priority_level <= 0:
+                    raise ValueError("Priority must be greater than 0")
         except ValueError:
             self.at_input_field.clear()
             self.bt_input_field.clear()
@@ -259,6 +284,7 @@ class SchedulingTab(QWidget):
                 self.priority_input_field.clear()
             return
         
+        # Add process to table and processes list
         self.pid += 1
         row_position = self.input_table_widget.rowCount()
         self.input_table_widget.insertRow(row_position)
@@ -270,12 +296,15 @@ class SchedulingTab(QWidget):
             self.processes.append(Process(self.pid, arrival_time, burst_time, priority_level))
         else:
             self.processes.append(Process(self.pid, arrival_time, burst_time))
+        
+        # Clear input fields after adding process
         self.at_input_field.clear()
         self.bt_input_field.clear()
         if self.with_priority:
             self.priority_input_field.clear()
 
     def clear_all(self):
+        # Resets everything (input/output)
         self.input_table_widget.setRowCount(0)
         self.processes.clear()
         self.pid = 0
@@ -285,12 +314,15 @@ class SchedulingTab(QWidget):
         self.averages_label.clear()
 
     def schedule_input(self):
+        # Return if processes is empty
         if not self.processes:
             return
         
+        # Run the scheduling algorithm and calculate the averages
         gantt_chart = self.scheduling_algo(self.processes, len(self.processes))
         averages = calculate_averages(self.processes, len(self.processes))
 
+        # Combine the gantt chart data into single strings
         processes_id_str = ""
         times_str = ""
         for time, process_id in gantt_chart:
@@ -298,9 +330,11 @@ class SchedulingTab(QWidget):
                 processes_id_str += f"{process_id:^10}"
             times_str += f"{time:<10}"
 
+        # Set processes_label and times_label text
         self.processes_label.setText(processes_id_str)
         self.times_label.setText(times_str)
 
+        # Create the output table
         for process in self.processes:
             row_position = self.output_table_widget.rowCount()
             self.output_table_widget.insertRow(row_position)
@@ -313,6 +347,7 @@ class SchedulingTab(QWidget):
             self.output_table_widget.setItem(row_position, 6, QTableWidgetItem(f"{process.waiting_time}"))
             self.output_table_widget.setItem(row_position, 7, QTableWidgetItem(f"{process.response_time}"))
 
+        # Set averages_label text
         self.averages_label.setText(f"TAT: {round(averages["turnaround_time_avg"], 2):<10.2f}"
                                     f"WT: {round(averages["waiting_time_avg"], 2):<10.2f}"
                                     f"RT: {round(averages["response_time_avg"], 2):<10.2f}")
@@ -365,6 +400,7 @@ class MainWindow(QMainWindow):
             }
         """)
         
+        # Initialize tabs
         self.tabs.addTab(SchedulingTab(highest_response_ratio_next), "HRRN")
         self.tabs.addTab(SchedulingTab(preemptive_priority, with_priority=True), "Preemptive Priority")
     
