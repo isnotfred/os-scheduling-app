@@ -268,8 +268,8 @@ class SchedulingTab(QWidget):
             arrival_time = int(self.at_input_field.text().strip())
             burst_time = int(self.bt_input_field.text().strip())
 
-            # Error: arrival/burst time cannot be negative or zero
-            if arrival_time <= 0 or burst_time <= 0:
+            # Error: arrival time cannot be negative and burst time cannot be negative or zero
+            if arrival_time < 0 or burst_time <= 0:
                 raise ValueError("Arrival/Burst time must be greater than 0")
             
             if self.with_priority:
