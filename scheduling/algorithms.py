@@ -1,6 +1,6 @@
 """
 CPU Scheduling Algorithms Implementation
-Includes: FCFS, SJF, HRRN, and Preemptive Priority Scheduling
+Includes: FCFS, SJF, Priority, HRRN, and Preemptive Priority Scheduling
 """
 
 def execute_process(process, current_time):
