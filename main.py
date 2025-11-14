@@ -1,6 +1,9 @@
 import sys
 from scheduling.process import Process
-from scheduling.algorithms import highest_response_ratio_next, preemptive_priority, calculate_averages
+from scheduling.algorithms import (
+    first_come_first_serve, shortest_job_first, non_preemptive_priority,
+    highest_response_ratio_next, preemptive_priority, calculate_averages
+)
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QTabWidget, QTableWidget,
     QTableWidgetItem, QLineEdit, QPushButton, QLabel, QScrollArea, QHeaderView
@@ -401,6 +404,9 @@ class MainWindow(QMainWindow):
         """)
         
         # Initialize tabs
+        self.tabs.addTab(SchedulingTab(first_come_first_serve), "FCFS")
+        self.tabs.addTab(SchedulingTab(shortest_job_first), "SJF")
+        self.tabs.addTab(SchedulingTab(non_preemptive_priority, with_priority=True), "Priority")
         self.tabs.addTab(SchedulingTab(highest_response_ratio_next), "HRRN")
         self.tabs.addTab(SchedulingTab(preemptive_priority, with_priority=True), "Preemptive Priority")
     

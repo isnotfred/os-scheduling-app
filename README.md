@@ -73,19 +73,11 @@ python -m main
 
 ## How to Use
 
-### HRRN Tab
-
-1. **Enter Process Details:** Arrival Time, Burst Time
+1. **Enter Process Details:** Arrival Time, Burst Time, Priority Level (if any)
 2. **Add Process:** Click the "Add Process" button
-3. **Schedule:** Click "Schedule" to run the HRRN algorithm and view results
-4. **Clear:** Remove all processes and reset
-
-### Preemptive Priority Tab
-
-1. **Enter Process Details:** Arrival Time, Burst Time, Priority (lower number = higher priority)
-2. **Add Process:** Click the "Add Process" button
-3. **Schedule:** Run the scheduling algorithm
+3. **Schedule:** Click "Schedule" to run the selected algorithm and view results
 4. **View Results:** Gantt Chart, Output Table, and average metrics (TAT, WT, RT)
+5. **Clear:** Remove all processes and reset
 
 ## Output Metrics Explained
 
