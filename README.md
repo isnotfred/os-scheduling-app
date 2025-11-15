@@ -155,5 +155,3 @@ Frederick Orlain
 1.0.0
 
 ---
-
-If you want, I can also **update the Installation section further to make it shorter and more beginner-friendly**, since your `requirements.txt` already covers all dependencies. Do you want me to do that?
