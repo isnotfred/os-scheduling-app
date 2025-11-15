@@ -1,8 +1,8 @@
 import sys
 from scheduling.process import Process
 from scheduling.algorithms import (
-    first_come_first_serve, shortest_job_first, non_preemptive_priority,
-    highest_response_ratio_next, preemptive_priority, calculate_averages
+    first_come_first_serve, shortest_job_first, non_preemptive_priority, highest_response_ratio_next,
+    shortest_remaining_time_first, preemptive_priority, round_robin, calculate_averages
 )
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QTabWidget, QTableWidget,
@@ -12,12 +12,15 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
 
 class SchedulingTab(QWidget):
-    def __init__(self, scheduling_algo, with_priority=False):
+    def __init__(self, scheduling_algo, with_priority=False, with_time_quantum=False):
         super().__init__()
         self.processes = []
         self.pid = 0
         self.scheduling_algo = scheduling_algo
         self.with_priority = with_priority
+        self.with_time_quantum= with_time_quantum
+        self.time_quantum = 0
+        self.is_time_quantum_set = False
 
         # Initialize sections
         self.tab_layout = QHBoxLayout()
@@ -37,37 +40,40 @@ class SchedulingTab(QWidget):
                 padding: 8px;
                 background-color: white;
                 font-size: 13px;
+                color: black;
             }
             QLineEdit:focus {
                 border: 2px solid #4CAF50;
             }
+            QLineEdit[class="set"] {
+                border: 2px solid red;
+                font-weight: bold;
+                color: red;
+            }
         """
 
-        # Initialize AT, BT, and Priority input fields
+        # Initialize AT, BT fields
+        self.at_input_field = QLineEdit()
+        self.at_input_field.setPlaceholderText("Enter arrival time")
+        self.at_input_field.setStyleSheet(input_field_style)
+        
+        self.bt_input_field = QLineEdit()
+        self.bt_input_field.setPlaceholderText("Enter burst time")
+        self.bt_input_field.setStyleSheet(input_field_style)
+
+        # Initialize Priority or Time Quantum input fields when needed
         if self.with_priority:
-            self.at_input_field = QLineEdit()
-            self.at_input_field.setPlaceholderText("Enter arrival time")
-            self.at_input_field.setStyleSheet(input_field_style)
-            
-            self.bt_input_field = QLineEdit()
-            self.bt_input_field.setPlaceholderText("Enter burst time")
-            self.bt_input_field.setStyleSheet(input_field_style)
-            
             self.priority_input_field = QLineEdit()
             self.priority_input_field.setPlaceholderText("Enter priority")
             self.priority_input_field.setStyleSheet(input_field_style)
-        else:
-            self.at_input_field = QLineEdit()
-            self.at_input_field.setPlaceholderText("Enter arrival time")
-            self.at_input_field.setStyleSheet(input_field_style)
-            
-            self.bt_input_field = QLineEdit()
-            self.bt_input_field.setPlaceholderText("Enter burst time")
-            self.bt_input_field.setStyleSheet(input_field_style)
+        elif self.with_time_quantum:
+            self.time_quantum_input_field = QLineEdit()
+            self.time_quantum_input_field.setPlaceholderText("Enter time quantum")
+            self.time_quantum_input_field.setStyleSheet(input_field_style)           
 
         # Initialize submit button for inputs
         submit_button = QPushButton("Add Process")
-        if self.with_priority:
+        if self.with_priority or self.with_time_quantum:
             submit_button.setFixedSize(90, self.at_input_field.sizeHint().height() * 3 + 15)
         else:
             submit_button.setFixedSize(90, self.at_input_field.sizeHint().height() * 2 + 10)
@@ -94,6 +100,8 @@ class SchedulingTab(QWidget):
         input_layout.addWidget(self.bt_input_field)
         if self.with_priority:
             input_layout.addWidget(self.priority_input_field)
+        elif self.with_time_quantum:
+            input_layout.addWidget(self.time_quantum_input_field)
         form_layout.addLayout(input_layout)
         form_layout.addWidget(submit_button)
 
@@ -255,6 +263,7 @@ class SchedulingTab(QWidget):
                 border-radius: 5px;
             }
         """)
+        self.averages_label.setText("Performance Averages:\n")
 
         # Combine scroll_area, output_table_widget, and averages_label into one output_section layout
         self.output_section.addWidget(scroll_area)
@@ -273,18 +282,32 @@ class SchedulingTab(QWidget):
 
             # Error: arrival time cannot be negative and burst time cannot be negative or zero
             if arrival_time < 0 or burst_time <= 0:
-                raise ValueError("Arrival/Burst time must be greater than 0")
+                raise ValueError("Arrival cannot be negative and Burst time must be greater than 0")
             
             if self.with_priority:
                 priority_level = int(self.priority_input_field.text().strip())
                 # Error: priority cannot be negative or zero
                 if priority_level <= 0:
                     raise ValueError("Priority must be greater than 0")
+            elif self.with_time_quantum and not self.is_time_quantum_set:
+                time_quantum = int(self.time_quantum_input_field.text().strip())
+                # Error: time quantum cannot be negative or zero
+                if time_quantum <= 0:
+                    raise ValueError("Time quantum must be greater than 0")
+                self.time_quantum = time_quantum
+                self.time_quantum_input_field.setEnabled(False)
+                self.time_quantum_input_field.setText(f"Time Quantum: {time_quantum}")
+                self.time_quantum_input_field.setProperty("class", "set")
+                self.time_quantum_input_field.style().unpolish(self.time_quantum_input_field)
+                self.time_quantum_input_field.style().polish(self.time_quantum_input_field)
+                self.is_time_quantum_set = True
         except ValueError:
             self.at_input_field.clear()
             self.bt_input_field.clear()
             if self.with_priority:
                 self.priority_input_field.clear()
+            if self.with_time_quantum and not self.is_time_quantum_set:
+                self.time_quantum_input_field.clear()
             return
         
         # Add process to table and processes list
@@ -314,7 +337,15 @@ class SchedulingTab(QWidget):
         self.output_table_widget.setRowCount(0)
         self.processes_label.clear()
         self.times_label.clear()
-        self.averages_label.clear()
+        self.averages_label.setText("Performance Averages:\n")
+        if self.with_time_quantum:
+            self.time_quantum = 0
+            self.is_time_quantum_set = False
+            self.time_quantum_input_field.setEnabled(True)
+            self.time_quantum_input_field.clear()
+            self.time_quantum_input_field.setProperty("class", None)
+            self.time_quantum_input_field.style().unpolish(self.time_quantum_input_field)
+            self.time_quantum_input_field.style().polish(self.time_quantum_input_field)
 
     def schedule_input(self):
         # Return if processes is empty
@@ -322,7 +353,10 @@ class SchedulingTab(QWidget):
             return
         
         # Run the scheduling algorithm and calculate the averages
-        gantt_chart = self.scheduling_algo(self.processes, len(self.processes))
+        if self.with_time_quantum:
+            gantt_chart = self.scheduling_algo(self.processes, len(self.processes), self.time_quantum)
+        else:
+            gantt_chart = self.scheduling_algo(self.processes, len(self.processes))
         averages = calculate_averages(self.processes, len(self.processes))
 
         # Combine the gantt chart data into single strings
@@ -351,7 +385,8 @@ class SchedulingTab(QWidget):
             self.output_table_widget.setItem(row_position, 7, QTableWidgetItem(f"{process.response_time}"))
 
         # Set averages_label text
-        self.averages_label.setText(f"TAT: {round(averages["turnaround_time_avg"], 2):<10.2f}"
+        self.averages_label.setText("Performance Averages:\n"
+                                    f"TAT: {round(averages["turnaround_time_avg"], 2):<10.2f}"
                                     f"WT: {round(averages["waiting_time_avg"], 2):<10.2f}"
                                     f"RT: {round(averages["response_time_avg"], 2):<10.2f}")
 
@@ -408,8 +443,10 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(SchedulingTab(shortest_job_first), "SJF")
         self.tabs.addTab(SchedulingTab(non_preemptive_priority, with_priority=True), "Priority")
         self.tabs.addTab(SchedulingTab(highest_response_ratio_next), "HRRN")
+        self.tabs.addTab(SchedulingTab(shortest_remaining_time_first), "SRTF")
         self.tabs.addTab(SchedulingTab(preemptive_priority, with_priority=True), "Preemptive Priority")
-    
+        self.tabs.addTab(SchedulingTab(round_robin, with_time_quantum=True), "Round Robin")
+
         self.setCentralWidget(self.tabs)
 
 def main():

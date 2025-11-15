@@ -1,6 +1,10 @@
 """
 CPU Scheduling Algorithms Implementation
-Includes: FCFS, SJF, Priority, HRRN, and Preemptive Priority Scheduling
+Includes: FCFS, SJF, Priority, HRRN, SRTF, Preemptive Priority, and RR Scheduling
+
+Args of each algorithm:
+    processes: List of process objects
+    processes_count: Number of processes
 """
 
 def execute_process(process, current_time):
@@ -167,10 +171,14 @@ def highest_response_ratio_next(processes, processes_count):
                     # Tie-breaker 1: earlier arrival time
                     if process.arrival_time < processes[selected_index].arrival_time:
                         selected_index = i
-                    # Tie-breaker 2: lower PID
                     elif process.arrival_time == processes[selected_index].arrival_time:
-                        if process.pid < processes[selected_index].pid:
+                        # Tie-breaker 2: shorter burst time
+                        if process.burst_time < processes[selected_index].burst_time:
                             selected_index = i
+                        # Tie-breaker 3: lower PID
+                        elif process.burst_time == processes[selected_index].burst_time:
+                            if process.pid < processes[selected_index].pid:
+                                selected_index = i
 
         # No process available, advance time
         if selected_index == -1:
@@ -182,6 +190,72 @@ def highest_response_ratio_next(processes, processes_count):
         gantt_chart.append((current_time, f"P{process.pid}"))
         current_time = execute_process(process, current_time)
         completed_count += 1
+
+    gantt_chart.append((current_time, None))
+    return gantt_chart
+
+def shortest_remaining_time_first(processes, processes_count):
+    """
+    Shortest Remaining Time First (SRTF) Scheduling Algorithm.
+    Executes shortest remaining time process at each time unit.
+    Supports process preemption when shorter remaining time process arrives.
+    """
+    current_time = 0
+    completed_count = 0
+    gantt_chart = []
+    last_pid = -1
+    current_process_index = -1
+
+    while completed_count < processes_count:
+        # Find process with shortest remaining time
+        selected_index = -1
+        shortest_remaining_time = float('inf')
+        
+        for i, process in enumerate(processes):
+            if process.arrival_time <= current_time and not process.completed:
+                if process.remaining_time < shortest_remaining_time:
+                    selected_index = i
+                    shortest_remaining_time = process.remaining_time
+                elif process.remaining_time == shortest_remaining_time:
+                    # Tie-breaker 1: earlier arrival time
+                    if process.arrival_time < processes[selected_index].arrival_time:
+                        selected_index = i
+                    # Tie-breaker 2: lower PID
+                    elif process.arrival_time == processes[selected_index].arrival_time:
+                        if process.pid < processes[selected_index].pid:
+                            selected_index = i
+
+        # No process available, advance time
+        if selected_index == -1:
+            current_time += 1
+            current_process_index = -1
+            continue
+        
+        process = processes[selected_index]
+        current_process_index = selected_index
+        
+        # Set starting time on first execution
+        if process.starting_time == -1:
+            process.starting_time = current_time
+            process.response_time = current_time - process.arrival_time
+
+        # Add to gantt chart only when process changes
+        if process.pid != last_pid:
+            gantt_chart.append((current_time, f"P{process.pid}"))
+            last_pid = process.pid
+
+        # Execute for one time unit
+        process.remaining_time -= 1
+        current_time += 1
+
+        # Check if process completed
+        if process.remaining_time == 0:
+            process.completed = True
+            process.completion_time = current_time
+            process.turnaround_time = process.completion_time - process.arrival_time
+            process.waiting_time = process.turnaround_time - process.burst_time
+            completed_count += 1
+            current_process_index = -1
 
     gantt_chart.append((current_time, None))
     return gantt_chart
@@ -209,13 +283,8 @@ def preemptive_priority(processes, processes_count):
                     selected_index = i
                     highest_priority = process.priority
                 elif process.priority == highest_priority:
-                    # Tie-breaker 0: minimize context switches (prefer current process)
-                    if i == current_process_index:
-                        selected_index = i
-                    elif selected_index == current_process_index:
-                        continue
                     # Tie-breaker 1: earlier arrival time
-                    elif process.arrival_time < processes[selected_index].arrival_time:
+                    if process.arrival_time < processes[selected_index].arrival_time:
                         selected_index = i
                     # Tie-breaker 2: shorter burst time
                     elif process.arrival_time == processes[selected_index].arrival_time:
@@ -261,6 +330,81 @@ def preemptive_priority(processes, processes_count):
     gantt_chart.append((current_time, None))
     return gantt_chart
 
+def round_robin(processes, processes_count, time_quantum):
+    """
+    Round Robin (RR) Scheduling Algorithm.
+    Preemptive scheduling where each process gets a fixed time quantum in circular order.
+    
+    Added Args:
+        time_quantum: Time slice allocated to each process
+    """
+    current_time = 0
+    completed_count = 0
+    gantt_chart = []
+    last_pid = -1
+    
+    # Create ready queue - processes ordered by arrival, then PID
+    ready_queue = []
+    processes_copy = sorted(enumerate(processes), key=lambda x: (x[1].arrival_time, x[1].pid))
+    next_process_idx = 0
+    
+    while completed_count < processes_count:
+        # Add newly arrived processes to ready queue
+        while next_process_idx < processes_count:
+            idx, process = processes_copy[next_process_idx]
+            if process.arrival_time <= current_time and not process.completed:
+                if idx not in [p[0] for p in ready_queue]:
+                    ready_queue.append((idx, process))
+                    next_process_idx += 1
+            else:
+                break
+        
+        # No process in ready queue, advance time
+        if not ready_queue:
+            current_time += 1
+            continue
+        
+        # Get process from front of queue
+        selected_index, process = ready_queue.pop(0)
+        
+        # Set starting time on first execution
+        if process.starting_time == -1:
+            process.starting_time = current_time
+            process.response_time = current_time - process.arrival_time
+        
+        # Add to gantt chart when process changes
+        if process.pid != last_pid:
+            gantt_chart.append((current_time, f"P{process.pid}"))
+            last_pid = process.pid
+        
+        # Execute for time quantum or until completion
+        execution_time = min(time_quantum, process.remaining_time)
+        process.remaining_time -= execution_time
+        current_time += execution_time
+        
+        # Add newly arrived processes to ready queue during execution
+        while next_process_idx < processes_count:
+            idx, proc = processes_copy[next_process_idx]
+            if proc.arrival_time <= current_time and not proc.completed:
+                if idx not in [p[0] for p in ready_queue] and idx != selected_index:
+                    ready_queue.append((idx, proc))
+                    next_process_idx += 1
+            else:
+                break
+        
+        # Check if process completed
+        if process.remaining_time == 0:
+            process.completed = True
+            process.completion_time = current_time
+            process.turnaround_time = process.completion_time - process.arrival_time
+            process.waiting_time = process.turnaround_time - process.burst_time
+            completed_count += 1
+        else:
+            # Process not completed, add back to end of ready queue
+            ready_queue.append((selected_index, process))
+    
+    gantt_chart.append((current_time, None))
+    return gantt_chart
 
 def calculate_averages(processes, processes_count):
     """
