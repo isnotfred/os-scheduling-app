@@ -204,7 +204,6 @@ def shortest_remaining_time_first(processes, processes_count):
     completed_count = 0
     gantt_chart = []
     last_pid = -1
-    current_process_index = -1
 
     while completed_count < processes_count:
         # Find process with shortest remaining time
@@ -225,14 +224,15 @@ def shortest_remaining_time_first(processes, processes_count):
                         if process.pid < processes[selected_index].pid:
                             selected_index = i
 
-        # No process available, advance time
+        # If no process is ready, CPU is idle
         if selected_index == -1:
+            if last_pid != "IDLE":
+                gantt_chart.append((current_time, None))  # None = IDLE
+                last_pid = "IDLE"
             current_time += 1
-            current_process_index = -1
             continue
         
         process = processes[selected_index]
-        current_process_index = selected_index
         
         # Set starting time on first execution
         if process.starting_time == -1:
@@ -255,7 +255,6 @@ def shortest_remaining_time_first(processes, processes_count):
             process.turnaround_time = process.completion_time - process.arrival_time
             process.waiting_time = process.turnaround_time - process.burst_time
             completed_count += 1
-            current_process_index = -1
 
     gantt_chart.append((current_time, None))
     return gantt_chart
@@ -270,7 +269,6 @@ def preemptive_priority(processes, processes_count):
     completed_count = 0
     gantt_chart = []
     last_pid = -1
-    current_process_index = -1
 
     while completed_count < processes_count:
         # Find process with highest priority (lowest priority number)
@@ -295,14 +293,15 @@ def preemptive_priority(processes, processes_count):
                             if process.pid < processes[selected_index].pid:
                                 selected_index = i
 
-        # No process available, advance time
+        # If no process is ready, CPU is idle
         if selected_index == -1:
+            if last_pid != "IDLE":
+                gantt_chart.append((current_time, None))  # None = IDLE
+                last_pid = "IDLE"
             current_time += 1
-            current_process_index = -1
             continue
         
         process = processes[selected_index]
-        current_process_index = selected_index
         
         # Set starting time on first execution
         if process.starting_time == -1:
@@ -325,7 +324,6 @@ def preemptive_priority(processes, processes_count):
             process.turnaround_time = process.completion_time - process.arrival_time
             process.waiting_time = process.turnaround_time - process.burst_time
             completed_count += 1
-            current_process_index = -1
 
     gantt_chart.append((current_time, None))
     return gantt_chart
@@ -359,8 +357,11 @@ def round_robin(processes, processes_count, time_quantum):
             else:
                 break
         
-        # No process in ready queue, advance time
-        if not ready_queue:
+        # If no process is ready, CPU is idle
+        if selected_index == -1:
+            if last_pid != "IDLE":
+                gantt_chart.append((current_time, None))  # None = IDLE
+                last_pid = "IDLE"
             current_time += 1
             continue
         

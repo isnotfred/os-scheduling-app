@@ -362,10 +362,19 @@ class SchedulingTab(QWidget):
         # Combine the gantt chart data into single strings
         processes_id_str = ""
         times_str = ""
-        for time, process_id in gantt_chart:
-            if process_id is not None:
-                processes_id_str += f"{process_id:^10}"
-            times_str += f"{time:<10}"
+
+        last_time = None
+        for time, pid in gantt_chart:
+            # Determine label: either process or IDLE
+            label = pid if pid is not None else "--"
+
+            # Only show a new label if different from previous (to avoid repeats)
+            if last_time is None or pid != last_pid:
+                processes_id_str += f"{label:^10}"
+                times_str += f"{time:<10}"
+                last_pid = pid
+
+            last_time = time
 
         # Set processes_label and times_label text
         self.processes_label.setText(processes_id_str)
