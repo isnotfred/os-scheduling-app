@@ -386,9 +386,9 @@ class SchedulingTab(QWidget):
 
         # Set averages_label text
         self.averages_label.setText("Performance Averages:\n"
-                                    f"TAT: {round(averages["turnaround_time_avg"], 2):<10.2f}"
-                                    f"WT: {round(averages["waiting_time_avg"], 2):<10.2f}"
-                                    f"RT: {round(averages["response_time_avg"], 2):<10.2f}")
+                                    f"TAT: {averages["turnaround_time_avg"]:<10.2f}"
+                                    f"WT: {averages["waiting_time_avg"]:<10.2f}"
+                                    f"RT: {averages["response_time_avg"]:<10.2f}")
 
 class MainWindow(QMainWindow):
     def __init__(self):
