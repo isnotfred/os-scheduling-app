@@ -72,13 +72,13 @@ class SchedulingTab(QWidget):
             self.time_quantum_input_field.setStyleSheet(input_field_style)           
 
         # Initialize submit button for inputs
-        submit_button = QPushButton("Add Process")
+        self.submit_button = QPushButton("Add Process")
         if self.with_priority or self.with_time_quantum:
-            submit_button.setFixedSize(90, self.at_input_field.sizeHint().height() * 3 + 15)
+            self.submit_button.setFixedSize(90, self.at_input_field.sizeHint().height() * 3 + 15)
         else:
-            submit_button.setFixedSize(90, self.at_input_field.sizeHint().height() * 2 + 10)
-        submit_button.clicked.connect(self.add_item)
-        submit_button.setStyleSheet("""
+            self.submit_button.setFixedSize(90, self.at_input_field.sizeHint().height() * 2 + 10)
+        self.submit_button.clicked.connect(self.add_item)
+        self.submit_button.setStyleSheet("""
             QPushButton {
                 background-color: #4CAF50;
                 color: white;
@@ -103,7 +103,7 @@ class SchedulingTab(QWidget):
         elif self.with_time_quantum:
             input_layout.addWidget(self.time_quantum_input_field)
         form_layout.addLayout(input_layout)
-        form_layout.addWidget(submit_button)
+        form_layout.addWidget(self.submit_button)
 
         # Table styling
         table_style = """
@@ -166,10 +166,10 @@ class SchedulingTab(QWidget):
         """)
         
         # Initialize schedule button to start CPU scheduling algorithm
-        schedule_button = QPushButton("Schedule")
-        schedule_button.setFixedHeight(40)
-        schedule_button.clicked.connect(self.schedule_input)
-        schedule_button.setStyleSheet("""
+        self.schedule_button = QPushButton("Schedule")
+        self.schedule_button.setFixedHeight(40)
+        self.schedule_button.clicked.connect(self.schedule_input)
+        self.schedule_button.setStyleSheet("""
             QPushButton {
                 background-color: #2196F3;
                 color: white;
@@ -188,7 +188,7 @@ class SchedulingTab(QWidget):
 
         # Add clear and schedule buttons to buttons_layout
         buttons_layout.addWidget(clear_input_button)
-        buttons_layout.addWidget(schedule_button)
+        buttons_layout.addWidget(self.schedule_button)
 
         # Combine form_layout, input_table_widgets, and buttons_layout into one input_section layout
         self.input_section.addLayout(form_layout)
@@ -347,36 +347,45 @@ class SchedulingTab(QWidget):
             self.time_quantum_input_field.style().unpolish(self.time_quantum_input_field)
             self.time_quantum_input_field.style().polish(self.time_quantum_input_field)
 
+        self.at_input_field.setEnabled(True)
+        self.bt_input_field.setEnabled(True)
+        if self.with_priority:
+            self.priority_input_field.setEnabled(True)
+        self.submit_button.setEnabled(True)
+        self.schedule_button.setEnabled(True)
+
     def schedule_input(self):
         # Return if processes is empty
         if not self.processes:
             return
         
-        # Run the scheduling algorithm and calculate the averages
+        # Reset any previous Gantt chart display
+        last_pid = None
+
+        # Run the processes with the selected scheduling algorithm and calculate averages
         if self.with_time_quantum:
             gantt_chart = self.scheduling_algo(self.processes, len(self.processes), self.time_quantum)
         else:
             gantt_chart = self.scheduling_algo(self.processes, len(self.processes))
+
         averages = calculate_averages(self.processes, len(self.processes))
 
-        # Combine the gantt chart data into single strings
+        # Format the gantt chart
         processes_id_str = ""
         times_str = ""
-
-        last_time = None
         for time, pid in gantt_chart:
-            # Determine label: either process or IDLE
-            label = pid if pid is not None else "--"
+            if pid is None:
+                label = "--"   # CPU idle
+            elif pid == "END":
+                label = ""     # end marker
+            else:
+                label = pid    # actual process
 
-            # Only show a new label if different from previous (to avoid repeats)
-            if last_time is None or pid != last_pid:
+            if pid != last_pid:
                 processes_id_str += f"{label:^10}"
                 times_str += f"{time:<10}"
                 last_pid = pid
 
-            last_time = time
-
-        # Set processes_label and times_label text
         self.processes_label.setText(processes_id_str)
         self.times_label.setText(times_str)
 
@@ -398,6 +407,13 @@ class SchedulingTab(QWidget):
                                     f"TAT: {averages["turnaround_time_avg"]:<10.2f}"
                                     f"WT: {averages["waiting_time_avg"]:<10.2f}"
                                     f"RT: {averages["response_time_avg"]:<10.2f}")
+        
+        self.at_input_field.setEnabled(False)
+        self.bt_input_field.setEnabled(False)
+        if self.with_priority:
+            self.priority_input_field.setEnabled(False)
+        self.submit_button.setEnabled(False)
+        self.schedule_button.setEnabled(False)
 
 class MainWindow(QMainWindow):
     def __init__(self):
